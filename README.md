@@ -2,7 +2,7 @@
 ---
 Technical solver details:
 - Taylor-Hood elements for velocity and pressure
-- BDF2 time-stepping scheme|
+- BDF2 time-stepping scheme
 
 Goals for this solver:
 - 2D Exact Taylor-Green vortex
@@ -12,16 +12,16 @@ Goals for this solver:
 - 2D DFG benchmark problem
     - Does solver preform as expected?
 - Simple anulus spinal geometry
----
 
 ## Taylor-Green Vortex Problem [[1]](https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex)
 
-The original work describes a 3 dimensional flow. It's defined by the three velocity components $\boldsymbol v = (u,v,w) $ at time $t = 0$ governed bt the three equations:
+The original work describes a 3 dimensional flow. It's defined by the three velocity components $\boldsymbol v = (u,v,w)$ at time $t = 0$ governed bt the three equations:
+
 $$
 \begin{align*}
-u = A \cos(a x )\sin(by)\sin(cz), \\
+u = A \cos(ax)\sin(by)\sin(cz), \\
 v = B \sin(ax)\cos(by)\sin(cz), \\
-w = C \sin(ax)\sin(by)\cos(cz). \\
+w = C \sin(ax)\sin(by)\cos(cz). 
 \end{align*}
 $$
 
@@ -49,10 +49,8 @@ In an infinite domain, the doubly periodic solution is given by
 
 $$
 \begin{align*}
-
 u = U_0 \sin(kx)\cos(ky)F(t), & \quad v = -U_0 \cos(kx)\sin(ky)F(t), \\
 F(t)&=e^{-\nu k^2t}
-
 \end{align*}
 $$
 
@@ -60,9 +58,7 @@ Here $U_0$ is the maximum velocity in the flow field, $k$ is the inverse length 
 
 $$
 \begin{align*}
-
 p = \frac{\rho U_0^2}{4}(\cos(2k x)+ \cos (2 k y)) F(t)^2
-
 \end{align*}
 $$
 
@@ -71,20 +67,16 @@ With $\rho$ being the fluid density.
 The stream function of the Taylor-Green vortex is given by, that satisfies $\boldsymbol v = \nabla \times \psi$,
 
 $$
-
 \begin{align*}
 \psi = U_0 \sin(kx)\sin(ky)F(t) \boldsymbol{\hat z}.
 \end{align*}
-
 $$
 
 With the similar vorticity given by, that also satisfies $\boldsymbol \omega = \nabla \times \boldsymbol v$,
 
 $$
-
 \begin{align*}
 \omega = 2U_0\sin(kx)\sin(ky)F(t)\boldsymbol{\hat z}.   
 \end{align*}
-
 $$
 ---
