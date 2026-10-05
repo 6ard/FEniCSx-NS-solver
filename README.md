@@ -12,6 +12,11 @@ Goals for this solver:
 - 2D DFG benchmark problem
     - Does solver preform as expected?
 - Simple anulus spinal geometry
+---
+Current status:
+- 2D Taylor exact solution is implemented 
+
+---
 
 ## Taylor-Green Vortex Problem [[1]](https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex)
 
@@ -79,4 +84,7 @@ $$
 \omega = 2U_0\sin(kx)\sin(ky)F(t)\boldsymbol{\hat z}.   
 \end{align*}
 $$
+
 ---
+
+Taylor-Green exact solution gif:
