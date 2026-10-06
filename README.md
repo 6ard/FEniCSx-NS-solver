@@ -88,3 +88,6 @@ $$
 ---
 
 Taylor-Green exact solution gif:
+<img width="1024" height="768" alt="taylor_green" src="https://github.com/user-attachments/assets/9aa2e92b-2ee6-4d79-be34-33a0f6554ffc" />
+
+
