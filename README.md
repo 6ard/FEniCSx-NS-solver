@@ -55,7 +55,7 @@ In an infinite domain, the doubly periodic solution is given by
 $$
 \begin{align*}
 u = U_0 \sin(kx)\cos(ky)F(t), & \quad v = -U_0 \cos(kx)\sin(ky)F(t), \\
-F(t)&=e^{-\nu k^2t}
+F(t)&=e^{-2\nu k^2t}
 \end{align*}
 $$
 
