@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import ufl 
 import numpy as np
-from fenicsx_ns.cases.base import Case
+from fenicsx_ns.cases.base import Case, ExactSolution
 from fenicsx_ns.boundary_conditions import DirichletVelocity, PressurePin
 
 from dolfinx import fem, mesh
@@ -26,9 +26,10 @@ def make_TG_mesh(N, L):
 
     return msh, facet_tags
 
-class TaylorGreenExact:
+class TaylorGreenExact(ExactSolution):
     def __init__(self, fluid_params, U0, wave_number):
-        self.U0, self.nu, self.k, self.rho = U0, fluid_params.nu, wave_number, fluid_params.rho
+        super().__init__(fluid_params)
+        self.U0, self.k = U0, wave_number
 
     def _F(self, t, m) :
         return m.exp(-2*self.nu*self.k**2*t)
@@ -42,13 +43,10 @@ class TaylorGreenExact:
         F = self._F(t, m)
         return self.rho * self.U0**2 / 4 * (m.cos(2*self.k*x[0]) + m.cos(2*self.k*x[1])) * F**2
 
-    def u_np(self, t) : return lambda x : np.vstack(self._u(x, t, np))
-    def p_np(self, t) : return lambda x : self._p(x, t, np)
-    def u_ufl(self, x, t) : return ufl.as_vector(self._u(x, t, ufl))
-    def p_ufl(self, x, t) : return self._p(x, t, ufl)
+ 
 
 class TaylorGreenCase(Case):
-    pressure_nullspace = False
+    pressure_up_to_constant = True
 
     def __init__(self, N, fluid_params, U0, wave_number):
         super().__init__(fluid_params)
@@ -60,7 +58,7 @@ class TaylorGreenCase(Case):
         return make_TG_mesh(self.N, self.L) 
 
     def boundary_conditions(self, V, Q, facet_tags):
-        return [DirichletVelocity(V, facet_tags, marker=1, u_of_t=self.exact.u_np), PressurePin(Q, point=(0, 0), p_of_t=self.exact.p_np)]
+        return [DirichletVelocity(V, facet_tags, marker=1, u_of_t=self.exact.u_np)]
 
     def initial_condition(self, t):
         return self.exact.u_np(t)

@@ -38,7 +38,7 @@ class DirichletVelocity(Strong):
 class PressurePin(Strong):
     def __init__(self, Q, point, p_of_t):
         self.g, self.p_of_t = fem.Function(Q), p_of_t
-        dofs = fem.locate_dofs_geometrical(Q, lambda x: np.isclose(x[0], point[0]) & np.isclose(x[1], point[1]))
+        dofs = np.array([0], dtype=np.int32)
         self.bc = fem.dirichletbc(self.g, dofs)
 
     def update(self, t):

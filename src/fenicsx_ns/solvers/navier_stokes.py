@@ -37,7 +37,8 @@ class NavierStokesSolver(TimeDependence):
         self._constants() # Creates rho_c, mu_c, dt_c, grad_div_c
 
         self.bcs = self.case.boundary_conditions(self.V, self.Q, self.facet_tags)
-
+        if case.pressure_up_to_constant:
+            self.bcs.append(PressurePin(self.Q, point=(0, 0), p_of_t=self.case.exact.p_np))
 
         self._forms()
         self._create_problem()
@@ -123,7 +124,9 @@ class NavierStokesSolver(TimeDependence):
     def solve(self):
         self.problem.solve()
         p_mean = self.msh.comm.allreduce(fem.assemble_scalar(self._p_int), op=MPI.SUM) / self._vol
-        self.p_h.x.array[:] -= p_mean
+
+        if self.case.pressure_up_to_constant:
+            self.p_h.x.array[:] -= p_mean
 
     def advance_history(self):
         self.u_nm.x.array[:] = self.u_n.x.array
