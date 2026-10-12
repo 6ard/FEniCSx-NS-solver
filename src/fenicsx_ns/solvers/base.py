@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
 from fenicsx_ns.parameters import StabilizationParameters
 
@@ -22,9 +21,6 @@ class Solver(ABC):
     def default_preconditioner(self):
         return DirectLU()
 
-    def solve(self):
-        self.ksp.solve(self.b, self.x)
-
 class SteadyState(Solver):
     pass
 
@@ -33,11 +29,11 @@ class TimeDependence(Solver):
         super().__init__(case, time_params, stabilization, petsc_options=petsc_options, observers=observers)
         self.t0, self.dt, self.T = self.time_params.t0, self.time_params.dt, self.time_params.T
         self.t = self.t0
+        self.step = 0
         
-        self.scheme, self.stabilization = scheme, stabilization
+        self.scheme = scheme
         
     def run(self) :
-        self.t = self.t0
         for obs in self.observers: obs.on_start(self)
 
         num_steps = round((self.T - self.t0) / self.dt)

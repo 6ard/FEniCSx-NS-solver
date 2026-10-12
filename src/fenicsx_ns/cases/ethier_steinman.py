@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import ufl 
 import numpy as np
-from fenicsx_ns.cases.base import Case, ExactSolution
-from fenicsx_ns.boundary_conditions import DirichletVelocity, PressurePin
-
-from dolfinx import fem, mesh
+from dolfinx import mesh
 from mpi4py import MPI
+
+from fenicsx_ns.boundary_conditions import DirichletVelocity
+from fenicsx_ns.cases.base import Case, ExactSolution
 
 
 def make_ES_mesh(N, L):
@@ -50,7 +49,6 @@ class EthierSteinmanCase(Case):
     def __init__(self, N, fluid_params, a, d):
         super().__init__(fluid_params)
         self.N, self.L = N, 1
-        self.fluid_params = fluid_params
         self.exact = EthierSteinmanExact(self.fluid_params, a, d)
 
     def create_mesh(self):

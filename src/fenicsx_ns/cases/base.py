@@ -1,9 +1,12 @@
 # fenicsx_ns/cases/base.py
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
+
 import numpy as np
 import ufl
+
 
 class Case(ABC):
     def __init__(self, fluid_params):
@@ -17,9 +20,8 @@ class Case(ABC):
 
     def body_force(self, x, t):  return None
 
-    @abstractmethod
-    def initial_condition(self, t): pass    # callable for interpolation
-    pressure_nullspace: bool = False
+    def initial_condition(self, t):
+        return lambda x: np.zeros_like(x)
 
 class ExactSolution(ABC):
     def __init__(self, fluid_params):

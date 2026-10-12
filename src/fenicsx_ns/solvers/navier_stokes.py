@@ -2,28 +2,27 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import numpy as np
 import ufl
-from dolfinx import fem, mesh
+from dolfinx import fem
+from dolfinx.fem.petsc import LinearProblem
 from mpi4py import MPI
 from petsc4py import PETSc
-from dolfinx.fem.petsc import LinearProblem
 
-from fenicsx_ns.boundary_conditions import  PressurePin, DirichletVelocity
+from fenicsx_ns.boundary_conditions import PressurePin
 from fenicsx_ns.solvers.base import SteadyState, TimeDependence
 
-if TYPE_CHECKING:
-    from fenicsx_ns.cases.base import Case
-    from fenicsx_ns.parameters import TimeParameters
-    from fenicsx_ns.time_schemes import TimeScheme
 
 def t_h_space(msh):
     gdim = msh.geometry.dim
     V = fem.functionspace(msh, ("Lagrange", 2, (gdim,))) # P2
     Q = fem.functionspace(msh, ("Lagrange", 1)) # P1
     return V, Q
+
+def eps(z):
+    return ufl.sym(ufl.grad(z))
+
+def conv(u_ns, u, v):
+    return ufl.inner(ufl.dot(ufl.grad(u), u_ns), v)
 
 class SteadyNavierStokesSolver(SteadyState):
     pass
@@ -42,6 +41,7 @@ class NavierStokesSolver(TimeDependence):
 
         self._forms()
         self._create_problem()
+        self._normalize()
 
         self._apply_initial_conditions()
 
@@ -68,10 +68,8 @@ class NavierStokesSolver(TimeDependence):
         self.a_c = [self._fconst(c) for c in first.a]
         self.e_c = [self._fconst(c) for c in first.e]    
 
-    def _split_bcs(self, V, Q, facet_tags):
-        pass
 
-    def _forms(self, ) :
+    def _forms(self) :
         u, v = ufl.TrialFunction(self.V), ufl.TestFunction(self.V)
         p, q = ufl.TrialFunction(self.Q), ufl.TestFunction(self.Q)
 
@@ -79,8 +77,6 @@ class NavierStokesSolver(TimeDependence):
         e0, e1 = self.e_c
 
         u_ns = e0 * self.u_n + e1 * self.u_nm
-        eps = lambda z: ufl.sym(ufl.grad(z))
-        conv = lambda u_ns, u, v: ufl.inner(ufl.dot(ufl.grad(u), u_ns), v)
 
         a00 = (self.rho_c *a0 / self.dt_c * ufl.inner(u, v) * self.dx
                 + 0.5 * self.rho_c * (conv(u_ns, u, v) - conv(u_ns, v, u)) * self.dx
@@ -99,6 +95,7 @@ class NavierStokesSolver(TimeDependence):
         self.a = fem.form([[a00, a01], [a10, a11]])
         self.L = fem.form([L0, L1])
         
+    def _normalize(self):
         one = self._fconst(1.0)
         self._p_int = fem.form(self.p_h * self.dx)
         self._vol = self.msh.comm.allreduce(fem.assemble_scalar(fem.form(one * self.dx)), op=MPI.SUM)

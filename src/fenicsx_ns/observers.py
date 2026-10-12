@@ -4,9 +4,9 @@ from __future__ import annotations
 from abc import ABC
 
 import numpy as np
-from ufl import inner, grad
 from dolfinx import fem
 from mpi4py import MPI
+from ufl import grad, inner
 
 
 class Observer(ABC):

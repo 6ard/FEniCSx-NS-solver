@@ -7,7 +7,7 @@ __all__ = [
     "Solver",
     "SteadyState",
     "TimeDependence",
-    "NavierStokes"
+    "NavierStokesSolver"
 ]
 
 

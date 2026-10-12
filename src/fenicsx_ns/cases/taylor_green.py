@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-
-
-import ufl 
 import numpy as np
-from fenicsx_ns.cases.base import Case, ExactSolution
-from fenicsx_ns.boundary_conditions import DirichletVelocity, PressurePin
-
-from dolfinx import fem, mesh
+from dolfinx import mesh
 from mpi4py import MPI
+
+from fenicsx_ns.boundary_conditions import DirichletVelocity
+from fenicsx_ns.cases.base import Case, ExactSolution
 
 
 def make_TG_mesh(N, L):
@@ -51,7 +48,6 @@ class TaylorGreenCase(Case):
     def __init__(self, N, fluid_params, U0, wave_number):
         super().__init__(fluid_params)
         self.N, self.L = N, 2 * np.pi / wave_number
-        self.fluid_params = fluid_params
         self.exact = TaylorGreenExact(self.fluid_params, U0, wave_number)
 
     def create_mesh(self):

@@ -5,13 +5,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
-from dolfinx import fem, mesh
+from dolfinx import fem
 
 
 class BoundaryCondition(ABC):
-    @abstractmethod
     def update(self, t):
-        pass
+        self.g.interpolate(self.u_of_t(t))
 
 class Strong(BoundaryCondition):
     pass
@@ -24,16 +23,12 @@ class Weak(BoundaryCondition):
     def linear_form(self, V, t):
         pass
 
-
 class DirichletVelocity(Strong):
     def __init__(self, V, facet_tags, marker, u_of_t):
         self.g, self.u_of_t = fem.Function(V), u_of_t
         fdim = V.mesh.topology.dim - 1
         dofs = fem.locate_dofs_topological(V, fdim, facet_tags.find(marker))
         self.bc = fem.dirichletbc(self.g, dofs)
-
-    def update(self, t):
-        self.g.interpolate(self.u_of_t(t))
 
 class PressurePin(Strong):
     def __init__(self, Q, point, p_of_t):
