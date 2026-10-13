@@ -11,7 +11,7 @@ from fenicsx_ns.cases.base import Case, ExactSolution
 
 
 def make_ES_mesh(N, L):
-    msh = mesh.create_box(MPI.COMM_WORLD, [np.array([0, 0, 0]), np.array([L, L, L])], [N, N, N], mesh.CellType.hexahedron)
+    msh = mesh.create_box(MPI.COMM_WORLD, [np.array([-L, -L, -L]), np.array([L, L, L])], [N, N, N], mesh.CellType.hexahedron)
     fdim = msh.topology.dim - 1
 
     # Tags boundary facet with marker 1, using locate_entities_boundary and meshtags

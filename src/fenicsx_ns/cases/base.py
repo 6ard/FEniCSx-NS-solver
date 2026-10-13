@@ -11,6 +11,7 @@ import ufl
 class Case(ABC):
     def __init__(self, fluid_params):
         self.fluid_params = fluid_params
+        self.pressure_up_to_constant = False
 
     @abstractmethod
     def create_mesh(self):  pass           # returns (mesh, facet_tags)
@@ -21,7 +22,7 @@ class Case(ABC):
     def body_force(self, x, t):  return None
 
     def initial_condition(self, t):
-        return lambda x: np.zeros_like(x)
+        return np.zeros_like((self.msh.geometry.dim, self.N))
 
 class ExactSolution(ABC):
     def __init__(self, fluid_params):

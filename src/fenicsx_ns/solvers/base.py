@@ -30,15 +30,14 @@ class TimeDependence(Solver):
         self.t0, self.dt, self.T = self.time_params.t0, self.time_params.dt, self.time_params.T
         self.t = self.t0
         self.step = 0
+        self.num_steps = round((self.T - self.t0) / self.dt)
         
         self.scheme = scheme
         
     def run(self) :
         for obs in self.observers: obs.on_start(self)
 
-        num_steps = round((self.T - self.t0) / self.dt)
-
-        for step in range(1, num_steps + 1):
+        for step in range(1, self.num_steps + 1):
             self.step = step
             self.t = self.t0 + step * self.dt
             self.update_boundary_data(self.t)

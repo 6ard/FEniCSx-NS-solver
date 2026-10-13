@@ -37,7 +37,7 @@ class NavierStokesSolver(TimeDependence):
 
         self.bcs = self.case.boundary_conditions(self.V, self.Q, self.facet_tags)
         if case.pressure_up_to_constant:
-            self.bcs.append(PressurePin(self.Q, point=(0, 0), p_of_t=self.case.exact.p_np))
+            self.bcs.append(PressurePin(self.Q))
 
         self._forms()
         self._create_problem()
@@ -47,11 +47,11 @@ class NavierStokesSolver(TimeDependence):
 
     def _spaces(self) :
         self.V, self.Q = t_h_space(self.msh)
-        self.u_h = fem.Function(self.V)
+        self.u_h = fem.Function(self.V, name="Velocity")
         self.u_n = fem.Function(self.V)
         self.u_nm = fem.Function(self.V)
 
-        self.p_h = fem.Function(self.Q)
+        self.p_h = fem.Function(self.Q, name="Pressure")
 
     def _fconst(self, v):
         return fem.Constant(self.msh, PETSc.ScalarType(v))
