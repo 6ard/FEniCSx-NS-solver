@@ -25,12 +25,14 @@ class SteadyState(Solver):
     pass
 
 class TimeDependence(Solver): 
-    def __init__(self, case, time_params, scheme, *, stabilization=StabilizationParameters(), petsc_options=None, observers=()):
+    def __init__(self, case, time_params, scheme, *, stabilization=StabilizationParameters(), petsc_options=None, observers=(), every=10):
         super().__init__(case, time_params, stabilization, petsc_options=petsc_options, observers=observers)
         self.t0, self.dt, self.T = self.time_params.t0, self.time_params.dt, self.time_params.T
         self.t = self.t0
         self.step = 0
         self.num_steps = round((self.T - self.t0) / self.dt)
+
+        self.every = every
         
         self.scheme = scheme
         
@@ -38,6 +40,8 @@ class TimeDependence(Solver):
         for obs in self.observers: obs.on_start(self)
 
         for step in range(1, self.num_steps + 1):
+            if step % self.every == 0 :
+                print(f"Step {step}/{self.num_steps}")
             self.step = step
             self.t = self.t0 + step * self.dt
             self.update_boundary_data(self.t)
