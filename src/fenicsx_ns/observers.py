@@ -47,46 +47,82 @@ class Progress(Observer):
             
 
 class ErrorNorm(Observer): 
-    def __init__(self, exact, quad_degree=8):
+    _NORMS = ["u_L2", "u_H1", "p_L2"]
+
+    def __init__(self, exact, quad_degree=8, relative = True, zero_tol = 1e-14) :
         self.exact, self.quad_degree = exact, quad_degree
+        self.relative, self.zero_tol = relative, zero_tol
+
+        self.history = {}
 
     def on_start(self, solver):
         self._mean_free = solver.pressure_is_mean_free
         dx = solver.dx(degree=self.quad_degree)
 
+        u_ex = self.exact.u_ufl(solver.x_c, solver.t_c)
         p_ex = self.exact.p_ufl(solver.x_c, solver.t_c)
+        self.p_ex_mean = constant(solver.msh, 0.0)
 
         if self._mean_free:
-            self.p_ex_mean = constant(solver.msh, 0.0)
             self.p_ex_int = fem.form(p_ex * dx)
             self.volume = domain_volume(solver.msh)
 
         p_ref = p_ex - self.p_ex_mean if self._mean_free else p_ex
 
-        e_u, e_p = solver.u_h - self.exact.u_ufl(solver.x_c, solver.t_c), solver.p_h - p_ref
+        e_u, e_p = solver.u_h - u_ex, solver.p_h - p_ref
 
-        self.f_uL2 = fem.form(inner(e_u, e_u) * dx)
-        self.f_uH1 = fem.form(inner(grad(e_u), grad(e_u)) * dx)
-        self.f_pL2 = fem.form(e_p * e_p * dx)
+        self._error_forms = {
+            "u_L2"  : fem.form(inner(e_u, e_u) * dx),
+            "u_H1" : fem.form(inner(grad(e_u), grad(e_u)) * dx),
+            "p_L2" : fem.form(e_p * e_p * dx)
+        }
 
-        self.hist = {"t": [], "u_L2": [], "u_H1": [], "p_L2": []}
+        self._reference_forms = {}
+
+        if self.relative:
+            self._reference_forms = {
+                "u_L2"  : fem.form(inner(u_ex, u_ex) * dx),
+                "u_H1" : fem.form(inner(grad(u_ex), grad(u_ex)) * dx),
+                "p_L2" : fem.form(p_ref * p_ref * dx)
+            }
+
+        keys = ["t", *self._NORMS]
+        if self.relative:
+            keys += [f"{k}_rel" for k in self._NORMS]
+        self.history = {key: [] for key in keys}
 
     def _norm(self, solver, f) :
-        return np.sqrt(global_integral(f, solver.msh.comm))
+        return float(np.sqrt(max(np.real(global_integral(f, solver.msh.comm)), 0.0)))
 
     def on_step(self, solver) :
         if self._mean_free:
             self.p_ex_mean.value = global_integral(self.p_ex_int, solver.msh.comm) / self.volume
 
-        self.hist["t"].append(solver.t)
-        self.hist["u_L2"].append(self._norm(solver, self.f_uL2))
-        self.hist["u_H1"].append(self._norm(solver, self.f_uH1))
-        self.hist["p_L2"].append(self._norm(solver, self.f_pL2))
+        self.history["t"].append(solver.t)
+        for key, form in self._error_forms.items():
+            error = self._norm(solver, form)
+            self.history[key].append(error)
+            if self.relative:
+                reference = self._norm(solver, self._reference_forms[key])
+                self.history[f"{key}_rel"].append(error / reference if reference > self.zero_tol else error)
+
+    def summary(self) :
+        out = {}
+        for key, values in self.history.items():
+            if key == "t" or not values:
+                continue
+            arr = np.asarray(values)
+            out[key] = float(arr[-1])
+            out[f"{key}_max"] = float(np.nanmax(arr) if np.isfinite(arr).any() else np.nan)
+        return out
 
     def on_end(self, solver) : 
-        #print("Final error norms: u_L2 = {:.3e}, u_H1 = {:.3e}, p_L2 = {:.3e}".format(
-        #    self.hist["u_L2"][-1], self.hist["u_H1"][-1], self.hist["p_L2"][-1]))
-        pass
+        s = self.summary()
+        msg = "Final errors: " + ", ".join(f"{k} = {s[k]:.3e}" for k in self._NORMS)
+        if self.relative:
+            msg += " | relative: " + ", ".join(f"{k} = {s[f'{k}_rel']:.3e}" for k in self._NORMS)
+
+        print(msg)
 
 class VTXOutput(Observer) :
     def __init__(self, directory, exact = None, every=10) :

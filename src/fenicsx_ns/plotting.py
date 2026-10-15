@@ -91,9 +91,29 @@ def plot_error_norms(error_norms, norms, *, cmap="viridis"):
         ax.set_title(f"Error Norm: {norm}")
         ax.set_xlabel("Time")
         ax.set_ylabel("Error")
-        ax.semilogy(error_norms.hist["t"], error_norms.hist[norm], label=norm)
+        ax.plot(error_norms.history["t"], error_norms.history[norm], label=norm)
         ax.legend()
 
         plt.show()
 
-    
+def plot_convergence(result, keys, expected=None):
+    fig, ax = plt.subplots()
+    x = result.values
+    ax.set_title(f"Convergence Study: {result.parameter}")
+
+    for key in keys: 
+        e = result.errors(key) 
+        (line,) = ax.loglog(x, e, "o-", label=key)
+        if expected is not None and key in expected:
+            p = expected[key]
+            ax.loglog(x, e[-1] * (x / x[-1]) ** p, "--", color=line.get_color(), label=f"0({result.parameter}^{p})")
+
+    ax.set_xlabel(result.parameter)
+    ax.set_ylabel("Error")
+    ax.set_title(f"Convergence in {result.parameter}")
+    ax.grid()
+    ax.legend()
+
+    plt.show()
+
+    return fig
