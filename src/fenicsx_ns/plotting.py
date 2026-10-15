@@ -88,7 +88,7 @@ def plot_comparison(numeric, exact, *, cmap="viridis"):
 def plot_error_norms(error_norms, norms, *, cmap="viridis"):
     for norm in norms:
         fig, ax = plt.subplots()
-        ax.set_title(f"Error Norm: {error_norms.__class__.__name__}")
+        ax.set_title(f"Error Norm: {norm}")
         ax.set_xlabel("Time")
         ax.set_ylabel("Error")
         ax.semilogy(error_norms.hist["t"], error_norms.hist[norm], label=norm)

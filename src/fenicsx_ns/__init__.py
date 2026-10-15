@@ -4,7 +4,7 @@ if not dolfinx.__version__.startswith("0.11"):
     raise ImportError(f"This package requires dolfinx version 0.11 or higher, found version: {dolfinx.__version__}")
 
 from fenicsx_ns.boundary_conditions import DirichletVelocity, PressurePin
-from fenicsx_ns.observers import ErrorNorm, Observer, VTXOutput
+from fenicsx_ns.observers import ErrorNorm, Observer, VTXOutput, Progress
 from fenicsx_ns.parameters import (
     FluidParameters,
     StabilizationParameters,

@@ -10,7 +10,6 @@ from mpi4py import MPI
 
 
 class BoundaryCondition(ABC):
-    @abstractmethod
     def update(self, t):
         pass
 
@@ -24,6 +23,7 @@ class Weak(BoundaryCondition):
     @abstractmethod
     def linear_form(self, V, t):
         pass
+
 
 class DirichletVelocity(Strong):
     def __init__(self, V, facet_tags, marker, u_of_t):
@@ -46,6 +46,3 @@ class PressurePin(Strong):
             raise ValueError("Pressure pinning requires exactly one global dof.")
 
         self.bc = fem.dirichletbc(fem.Constant(Q.mesh, 0.0), dofs, Q)
-
-    def update(self, t):
-        self.g.interpolate(self.p_of_t(t))

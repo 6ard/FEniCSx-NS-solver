@@ -8,6 +8,9 @@ from dolfinx import fem, io
 from mpi4py import MPI
 from ufl import grad, inner
 
+import time
+import sys
+
 
 class Observer(ABC):
     def on_start(self, solver):
@@ -18,6 +21,29 @@ class Observer(ABC):
 
     def on_end(self, solver):
         pass
+
+class Progress(Observer):
+    def __init__(self, suffix="", length=50, fill="█"):
+        self.suffix, self.length, self.fill = suffix, length, fill
+
+    def on_start(self, solver):
+        self.prefix = solver.case.__class__.__name__ + " Progress:"
+
+        self.total = solver.num_steps
+
+    def on_step(self, solver):
+        percent = f"{100 * ((solver.step) / float(self.total)):.1f}"
+        filled_length = int(self.length * (solver.step + 1) // self.total)
+        bar = self.fill * filled_length + '-' * (self.length - filled_length)
+        
+        # \r prints from the beginning of the line to overwrite previous progress
+        sys.stdout.write(f'\r{self.prefix} |{bar}| {percent}% {self.suffix}')
+        sys.stdout.flush()   
+
+    def on_end(self, solver):
+        sys.stdout.write('\r' + ' ' * (self.length + 30) + '\r')
+
+            
 
 class ErrorNorm(Observer): 
     def __init__(self, exact, quad_degree=8):
@@ -43,8 +69,9 @@ class ErrorNorm(Observer):
         self.hist["p_L2"].append(self._norm(solver, self.f_pL2))
 
     def on_end(self, solver) : 
-        print("Final error norms: u_L2 = {:.3e}, u_H1 = {:.3e}, p_L2 = {:.3e}".format(
-            self.hist["u_L2"][-1], self.hist["u_H1"][-1], self.hist["p_L2"][-1]))
+        #print("Final error norms: u_L2 = {:.3e}, u_H1 = {:.3e}, p_L2 = {:.3e}".format(
+        #    self.hist["u_L2"][-1], self.hist["u_H1"][-1], self.hist["p_L2"][-1]))
+        pass
 
 class VTXOutput(Observer) :
     def __init__(self, directory, exact = None, every=10) :

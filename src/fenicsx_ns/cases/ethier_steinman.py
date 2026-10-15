@@ -16,7 +16,7 @@ def make_ES_mesh(N, L):
 
     # Tags boundary facet with marker 1, using locate_entities_boundary and meshtags
     def boundary(x):
-        return np.isclose(x[0], 0) | np.isclose(x[0], L) | np.isclose(x[1], 0) | np.isclose(x[1], L) | np.isclose(x[2], 0) | np.isclose(x[2], L)
+        return np.isclose(x[0], -L) | np.isclose(x[0], L) | np.isclose(x[1], -L) | np.isclose(x[1], L) | np.isclose(x[2], -L) | np.isclose(x[2], L)
     
     facet_indices = mesh.locate_entities_boundary(msh, fdim, boundary)
     facet_tags = mesh.meshtags(msh, fdim, facet_indices, 1)

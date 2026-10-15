@@ -9,9 +9,10 @@ import ufl
 
 
 class Case(ABC):
+    pressure_up_to_constant = False
+
     def __init__(self, fluid_params):
         self.fluid_params = fluid_params
-        self.pressure_up_to_constant = False
 
     @abstractmethod
     def create_mesh(self):  pass           # returns (mesh, facet_tags)
