@@ -7,6 +7,7 @@ import numpy as np
 from dolfinx import fem, io
 from mpi4py import MPI
 from ufl import grad, inner
+from fenicsx_ns.utils import global_integral, constant, domain_volume, subtract_mean
 
 import time
 import sys
@@ -50,9 +51,20 @@ class ErrorNorm(Observer):
         self.exact, self.quad_degree = exact, quad_degree
 
     def on_start(self, solver):
+        self._mean_free = solver.pressure_is_mean_free
         dx = solver.dx(degree=self.quad_degree)
 
-        e_u, e_p = solver.u_h - self.exact.u_ufl(solver.x_c, solver.t_c), solver.p_h - self.exact.p_ufl(solver.x_c, solver.t_c)
+        p_ex = self.exact.p_ufl(solver.x_c, solver.t_c)
+
+        if self._mean_free:
+            self.p_ex_mean = constant(solver.msh, 0.0)
+            self.p_ex_int = fem.form(p_ex * dx)
+            self.volume = domain_volume(solver.msh)
+
+        p_ref = p_ex - self.p_ex_mean if self._mean_free else p_ex
+
+        e_u, e_p = solver.u_h - self.exact.u_ufl(solver.x_c, solver.t_c), solver.p_h - p_ref
+
         self.f_uL2 = fem.form(inner(e_u, e_u) * dx)
         self.f_uH1 = fem.form(inner(grad(e_u), grad(e_u)) * dx)
         self.f_pL2 = fem.form(e_p * e_p * dx)
@@ -60,9 +72,12 @@ class ErrorNorm(Observer):
         self.hist = {"t": [], "u_L2": [], "u_H1": [], "p_L2": []}
 
     def _norm(self, solver, f) :
-        return np.sqrt(solver.msh.comm.allreduce(fem.assemble_scalar(f), op=MPI.SUM))
+        return np.sqrt(global_integral(f, solver.msh.comm))
 
     def on_step(self, solver) :
+        if self._mean_free:
+            self.p_ex_mean.value = global_integral(self.p_ex_int, solver.msh.comm) / self.volume
+
         self.hist["t"].append(solver.t)
         self.hist["u_L2"].append(self._norm(solver, self.f_uL2))
         self.hist["u_H1"].append(self._norm(solver, self.f_uH1))
@@ -92,12 +107,20 @@ class VTXOutput(Observer) :
         return io.VTXWriter(solver.msh.comm, self.directory + "/" + filename, functions)
 
     def on_start(self, solver) :
+        self._mean_free = solver.pressure_is_mean_free
+
         if self.exact is not None: 
             self.u_ex, self.e_u = fem.Function(solver.V, name="Exact Velocity"), fem.Function(solver.V, name="Velocity Error")
             self.p_ex, self.e_p = fem.Function(solver.Q, name="Exact Pressure"), fem.Function(solver.Q, name="Pressure Error")
 
             v_functions = [solver.u_h, self.u_ex, self.e_u]
             q_functions = [solver.p_h, self.p_ex, self.e_p]
+
+            self._volume = domain_volume(solver.msh)
+            self._p_ex_int = fem.form(self.p_ex * solver.dx)
+
+            if self._mean_free:
+                subtract_mean(self.p_ex, self._p_ex_int, self._volume)
         else:
             v_functions = [solver.u_h]
             q_functions = [solver.p_h]

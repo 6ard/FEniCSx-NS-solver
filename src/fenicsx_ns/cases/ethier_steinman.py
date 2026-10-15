@@ -8,20 +8,9 @@ from mpi4py import MPI
 
 from fenicsx_ns.boundary_conditions import DirichletVelocity
 from fenicsx_ns.cases.base import Case, ExactSolution
+from fenicsx_ns.cases.meshes import create_box_mesh, tag_exterior_facets
 
-
-def make_ES_mesh(N, L):
-    msh = mesh.create_box(MPI.COMM_WORLD, [np.array([-L, -L, -L]), np.array([L, L, L])], [N, N, N], mesh.CellType.hexahedron)
-    fdim = msh.topology.dim - 1
-
-    # Tags boundary facet with marker 1, using locate_entities_boundary and meshtags
-    def boundary(x):
-        return np.isclose(x[0], -L) | np.isclose(x[0], L) | np.isclose(x[1], -L) | np.isclose(x[1], L) | np.isclose(x[2], -L) | np.isclose(x[2], L)
-    
-    facet_indices = mesh.locate_entities_boundary(msh, fdim, boundary)
-    facet_tags = mesh.meshtags(msh, fdim, facet_indices, 1)
-
-    return msh, facet_tags
+WALL = 1
 
 class EthierSteinmanExact(ExactSolution):
     def __init__(self, fluid_params, a, d):
@@ -52,7 +41,8 @@ class EthierSteinmanCase(Case):
         self.exact = EthierSteinmanExact(self.fluid_params, a, d)
 
     def create_mesh(self):
-        return make_ES_mesh(self.N, self.L) 
+        msh = create_box_mesh((-self.L,) * 3, (self.L,) * 3, (self.N,) * 3, mesh.CellType.hexahedron)
+        return msh, tag_exterior_facets(msh, WALL)
 
     def boundary_conditions(self, V, Q, facet_tags):
         return [DirichletVelocity(V, facet_tags, marker=1, u_of_t=self.exact.u_np)]

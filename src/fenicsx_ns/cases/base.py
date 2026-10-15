@@ -23,7 +23,7 @@ class Case(ABC):
     def body_force(self, x, t):  return None
 
     def initial_condition(self, t):
-        return np.zeros_like((self.msh.geometry.dim, self.N))
+        return None
 
 class ExactSolution(ABC):
     def __init__(self, fluid_params):

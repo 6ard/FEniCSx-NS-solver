@@ -21,6 +21,10 @@ class Solver(ABC):
     def default_preconditioner(self):
         return DirectLU()
 
+    @property
+    def pressure_is_mean_free(self):
+        return self.case.pressure_up_to_constant
+
 class SteadyState(Solver):
     pass
 

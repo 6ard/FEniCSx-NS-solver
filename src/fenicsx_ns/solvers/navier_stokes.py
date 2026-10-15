@@ -6,10 +6,10 @@ import ufl
 from dolfinx import fem
 from dolfinx.fem.petsc import LinearProblem
 from mpi4py import MPI
-from petsc4py import PETSc
 
 from fenicsx_ns.boundary_conditions import PressurePin
 from fenicsx_ns.solvers.base import SteadyState, TimeDependence
+from fenicsx_ns.utils import global_integral, constant, domain_volume, subtract_mean
 
 
 def t_h_space(msh):
@@ -53,20 +53,17 @@ class NavierStokesSolver(TimeDependence):
 
         self.p_h = fem.Function(self.Q, name="Pressure")
 
-    def _fconst(self, v):
-        return fem.Constant(self.msh, PETSc.ScalarType(v))
-
     def _constants(self) :
-        self.x_c, self.t_c = ufl.SpatialCoordinate(self.msh), self._fconst(self.t)
+        self.x_c, self.t_c = ufl.SpatialCoordinate(self.msh), constant(self.msh, self.t)
         self.dx = ufl.Measure("dx", self.msh)
 
-        self.rho_c, self.mu_c, self.dt_c, self.grad_div_c = [self._fconst(v) for v in (self.case.fluid_params.rho, 
+        self.rho_c, self.mu_c, self.dt_c, self.grad_div_c = [constant(self.msh, v) for v in (self.case.fluid_params.rho, 
                                                                               self.case.fluid_params.mu, self.dt, self.stabilization.grad_div)]
 
         first = self.scheme.startup or self.scheme
         
-        self.a_c = [self._fconst(c) for c in first.a]
-        self.e_c = [self._fconst(c) for c in first.e]    
+        self.a_c = [constant(self.msh, c) for c in first.a]
+        self.e_c = [constant(self.msh, c) for c in first.e]    
 
 
     def _forms(self) :
@@ -89,16 +86,16 @@ class NavierStokesSolver(TimeDependence):
         L0 = -self.rho_c / self.dt_c * ufl.inner(a1 * self.u_n + a2 * self.u_nm, v) * self.dx
         L1 = ufl.ZeroBaseForm((q,))
 
-        zero = self._fconst(0.0)
+        zero = constant(self.msh, 0.0)
         a11 = zero * p * q * self.dx
 
         self.a = fem.form([[a00, a01], [a10, a11]])
         self.L = fem.form([L0, L1])
         
     def _normalize(self):
-        one = self._fconst(1.0)
+        self._vol = domain_volume(self.msh)
         self._p_int = fem.form(self.p_h * self.dx)
-        self._vol = self.msh.comm.allreduce(fem.assemble_scalar(fem.form(one * self.dx)), op=MPI.SUM)
+
 
     def _create_problem(self) :
         self.problem = LinearProblem(
@@ -120,10 +117,9 @@ class NavierStokesSolver(TimeDependence):
 
     def solve(self):
         self.problem.solve()
-        p_mean = self.msh.comm.allreduce(fem.assemble_scalar(self._p_int), op=MPI.SUM) / self._vol
 
         if self.case.pressure_up_to_constant:
-            self.p_h.x.array[:] -= p_mean
+            subtract_mean(self.p_h, self._p_int, self._vol)
 
     def advance_history(self):
         self.u_nm.x.array[:] = self.u_n.x.array
