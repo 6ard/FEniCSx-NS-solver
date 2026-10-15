@@ -90,4 +90,37 @@ $$
 Taylor-Green exact solution gif:
 <img width="1024" height="768" alt="taylor_green" src="https://github.com/user-attachments/assets/9aa2e92b-2ee6-4d79-be34-33a0f6554ffc" />
 
+## Exact Fully 3D Navier-Stokes solution [[2]](https://onlinelibrary.wiley.com/doi/abs/10.1002/fld.1650190502)
+Motivated by an exact solution in the 2D Ethier and Steinman search for a solution to the 3D Navier-Stokes equations written as:
+
+$$
+\begin{align*}
+\frac{\partial \boldsymbol v}{\partial t} + \text{Re} \boldsymbol v \cdot \nabla \boldsymbol v = -\text{Re} \nabla p + \nabla^2 \boldsymbol v, \\
+\nabla \cdot \boldsymbol v = 0.
+\end{align*}
+$$
+Where $\text{Re} = U L / v$ and the following quantities are: length $L$, velocity $U$, time $L^2/v$, and pressure $pU^2$. The velocity field is constructed where $v$ is such that:
+1. unsteady terms balance viscous terms in the momentum equations
+2. the velocity field is divergence free
+3. the convective terms $\boldsymbol v \cdot \nabla \boldsymbol v$ can be expressed as the gradient of a scalar function (The negative of the pressure).
+
+The exact solutions is then given by (I only present the second solution they found, since that is the one that is recommended for benchmarking):
+
+We require that $f(x) = e^{a x}$, $g(x) = e^{b x}$ and $h(x) = e^{c x}$.
+
+Then, choosing $a^2+b^2 = 0$ and $c$ to be purely imaginary. This is then a Beltrami flow and yields us a family of solutions, depending on the choice of $a$ and $b$. If we choose $a$ to be real so that $h = \pm i a$ follows and $c$ is written as $c =  i d$ for $d$ real and arbitrary. the the following solutions are obtained:
+
+$$
+\begin{align*}
+u = -a [e^{a x}\sin(ay \pm d z) + e^{az}+\cos(ax \pm dy]e^{-d^2t}, \\
+v = -a [e^{a y}\sin(az \pm dx) + e^{ax}+\cos(ay \pm dz]e^{-d^2t}, \\
+w = -a [e^{a z}\sin(ax \pm dy) + e^{ay}+\cos(az \pm dx]e^{-d^2t}, \\
+\end{align*}
+$$
+
+$$
+\begin{align*}
+p &= -\frac{a^2}{2} [e^{2ax}+e^{2ay}+e^{2az}+2\sin(ax \pm dy)\cos(az \pm dx)e^{a(y+z)} \\ &+ 2\sin(ay \pm dz)\cos(ax \pm dy)e^{a(z+x)} + 2\sin(az \pm dx)\cos(ay \pm dz)e^{a(x+y)}]e^{-2d^2t}.
+\end{align*}
+$$
 
