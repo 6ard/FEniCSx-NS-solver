@@ -4,7 +4,8 @@ from __future__ import annotations
 from abc import ABC
 
 import numpy as np
-from dolfinx import fem, io
+import ufl
+from dolfinx import fem, geometry, io
 from mpi4py import MPI
 from ufl import grad, inner
 from fenicsx_ns.utils import global_integral, constant, domain_volume, subtract_mean
@@ -175,3 +176,63 @@ class VTXOutput(Observer) :
 
         self.w_Q.close()
         self.w_V.close()
+
+class DragLift(Observer):
+    # Drag and lift coefficients C = 2 F / (rho U_mean^2 D) of the force F the fluid exerts on the facets with this marker
+    def __init__(self, marker, U_mean, D):
+        self.marker, self.U_mean, self.D = marker, U_mean, D
+
+    def on_start(self, solver):
+        n = -solver.n # FacetNormal points out of the fluid; the force on the body needs the normal into the fluid
+        sigma = 2 * solver.mu_c * ufl.sym(grad(solver.u_h)) - solver.p_h * ufl.Identity(solver.msh.geometry.dim)
+        traction = ufl.dot(sigma, n)
+        scale = 2 / (solver.rho_c * self.U_mean**2 * self.D)
+        ds = solver.ds(self.marker)
+        self._forms = {"C_D": fem.form(scale * traction[0] * ds), "C_L": fem.form(scale * traction[1] * ds)}
+        self.history = {"t": [], "C_D": [], "C_L": []}
+
+    def on_step(self, solver):
+        self.history["t"].append(solver.t)
+        for key, form in self._forms.items():
+            self.history[key].append(float(np.real(global_integral(form, solver.msh.comm))))
+
+    def summary(self):
+        t = np.asarray(self.history["t"])
+        out = {}
+        for key in ("C_D", "C_L"):
+            values = np.asarray(self.history[key])
+            i = int(np.argmax(values))
+            out.update({key: values[-1], f"{key}_max": values[i], f"t_{key}_max": t[i]})
+        return out
+
+class PressureDifference(Observer):
+    # p(a) - p(b) for two points a and b in the domain
+    def __init__(self, a, b):
+        self.points = np.zeros((2, 3))
+        self.points[0, :len(a)], self.points[1, :len(b)] = a, b
+
+    def on_start(self, solver):
+        msh = solver.msh
+        tdim = msh.topology.dim
+        tree = geometry.bb_tree(msh, tdim)
+        colliding = geometry.compute_colliding_cells(msh, geometry.compute_collisions_points(tree, self.points), self.points)
+
+        # Evaluate each point in one owned cell per process; a point on a process boundary is averaged
+        num_owned = msh.topology.index_map(tdim).size_local
+        self._cells = [[c for c in colliding.links(i) if c < num_owned][:1] for i in range(2)]
+        counts = [msh.comm.allreduce(len(cells), op=MPI.SUM) for cells in self._cells]
+        if 0 in counts:
+            raise ValueError(f"Point {self.points[counts.index(0)]} is outside the mesh")
+        self._counts = counts
+        self.history = {"t": [], "dp": []}
+
+    def _value(self, solver, i):
+        cells = self._cells[i]
+        local = solver.p_h.eval(self.points[i], np.array(cells, dtype=np.int32))[0] if cells else 0.0
+        return solver.msh.comm.allreduce(float(np.real(local)), op=MPI.SUM) / self._counts[i]
+
+    def on_step(self, solver):
+        self.history["t"].append(solver.t)
+        self.history["dp"].append(self._value(solver, 0) - self._value(solver, 1))
+
+5
