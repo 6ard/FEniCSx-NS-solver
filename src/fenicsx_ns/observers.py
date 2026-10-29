@@ -42,7 +42,7 @@ class Progress(Observer):
         sys.stdout.flush()   
 
     def on_end(self, solver):
-        sys.stdout.write('\r' + ' ' * (self.length + 30) + '\r')
+        sys.stdout.write('\r' + ' ' * (self.length + 50) + '\r')
 
             
 
@@ -122,7 +122,8 @@ class ErrorNorm(Observer):
         if self.relative:
             msg += " | relative: " + ", ".join(f"{k} = {s[f'{k}_rel']:.3e}" for k in self._NORMS)
 
-        print(msg)
+        pass
+        #print(msg)
 
 class VTXOutput(Observer) :
     def __init__(self, directory, exact = None, every=10) :

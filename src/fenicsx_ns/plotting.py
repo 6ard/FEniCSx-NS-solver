@@ -1,5 +1,7 @@
 # fenics_ns/plotting.py
 
+import os
+
 import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
@@ -96,7 +98,7 @@ def plot_error_norms(error_norms, norms, *, cmap="viridis"):
 
         plt.show()
 
-def plot_convergence(result, keys, expected=None):
+def plot_convergence(result, keys, expected=None, output_dir="convergence"):
     fig, ax = plt.subplots()
     x = result.values
     ax.set_title(f"Convergence Study: {result.parameter}")
@@ -110,10 +112,13 @@ def plot_convergence(result, keys, expected=None):
 
     ax.set_xlabel(result.parameter)
     ax.set_ylabel("Error")
-    ax.set_title(f"Convergence in {result.parameter}")
+    ax.set_title(f"Convergence of {result.parameter}, {result.runs[0].case.__class__.__name__}, {result.runs[0].scheme.name}")
     ax.grid()
     ax.legend()
 
-    plt.show()
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    fig.savefig(f"{output_dir}/convergence_{result.parameter}_{result.runs[0].case.__class__.__name__}_{result.runs[0].scheme.name}.png")
 
     return fig
