@@ -9,8 +9,6 @@ import ufl
 
 
 class Case(ABC):
-    pressure_up_to_constant = False
-
     def __init__(self, fluid_params):
         self.fluid_params = fluid_params
 

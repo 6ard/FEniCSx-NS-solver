@@ -7,7 +7,7 @@ from dolfinx import fem
 from dolfinx.fem.petsc import LinearProblem
 from mpi4py import MPI
 
-from fenicsx_ns.boundary_conditions import PressurePin
+from fenicsx_ns.boundary_conditions import PressurePin, Strong, Weak
 from fenicsx_ns.solvers.base import SteadyState, TimeDependence
 from fenicsx_ns.utils import global_integral, constant, domain_volume, subtract_mean
 
@@ -33,10 +33,14 @@ class NavierStokesSolver(TimeDependence):
         self.msh, self.facet_tags = self.case.create_mesh()
 
         self._spaces() # Creates V, Q, u_h, u_n, u_nm, p_h
-        self._constants() # Creates rho_c, mu_c, dt_c, grad_div_c
+        self._constants() # Creates dx, ds, n, rho_c, mu_c, dt_c, grad_div_c, backflow_c
 
         self.bcs = self.case.boundary_conditions(self.V, self.Q, self.facet_tags)
-        if case.pressure_up_to_constant:
+        self.weak_bcs = [b for b in self.bcs if isinstance(b, Weak)]
+
+        # Without a weak (open) boundary the pressure is only determined up to a constant
+        self.pressure_up_to_constant = not self.weak_bcs
+        if self.pressure_up_to_constant:
             self.bcs.append(PressurePin(self.Q))
 
         self._forms()
@@ -56,9 +60,12 @@ class NavierStokesSolver(TimeDependence):
     def _constants(self) :
         self.x_c, self.t_c = ufl.SpatialCoordinate(self.msh), constant(self.msh, self.t)
         self.dx = ufl.Measure("dx", self.msh)
+        self.ds = ufl.Measure("ds", self.msh, subdomain_data=self.facet_tags)
+        self.n = ufl.FacetNormal(self.msh)
 
-        self.rho_c, self.mu_c, self.dt_c, self.grad_div_c = [constant(self.msh, v) for v in (self.case.fluid_params.rho, 
-                                                                              self.case.fluid_params.mu, self.dt, self.stabilization.grad_div)]
+        self.rho_c, self.mu_c, self.dt_c, self.grad_div_c, self.backflow_c = [constant(self.msh, v) for v in (self.case.fluid_params.rho,
+                                                                              self.case.fluid_params.mu, self.dt, self.stabilization.grad_div,
+                                                                              self.stabilization.backflow)]
 
         first = self.scheme.startup or self.scheme
         
@@ -86,6 +93,16 @@ class NavierStokesSolver(TimeDependence):
         L0 = -self.rho_c / self.dt_c * ufl.inner(a1 * self.u_n + a2 * self.u_nm, v) * self.dx
         L1 = ufl.ZeroBaseForm((q,))
 
+        for b in self.weak_bcs:
+            ds, u_ns_n = self.ds(b.marker), ufl.dot(u_ns, self.n)
+            a00 += b.bilinear_form(u, v, self.n, self.ds, self.mu_c)
+            # The skew-symmetric convection leaves -rho/2 (u_ns.n) u on open boundaries; add it back
+            a00 += 0.5 * self.rho_c * u_ns_n * ufl.inner(u, v) * ds
+            if self.stabilization.backflow > 0:
+                # Backflow stabilization: removes the energy convection carries in where u_ns.n < 0
+                a00 -= 0.5 * self.backflow_c * self.rho_c * ufl.min_value(u_ns_n, 0) * ufl.inner(u, v) * ds
+            L0 += b.linear_form(v, self.n, self.ds, self.x_c, self.t_c, self.mu_c)
+
         zero = constant(self.msh, 0.0)
         a11 = zero * p * q * self.dx
 
@@ -99,7 +116,7 @@ class NavierStokesSolver(TimeDependence):
 
     def _create_problem(self) :
         self.problem = LinearProblem(
-            self.a, self.L, u=[self.u_h, self.p_h], bcs=[b.bc for b in self.bcs],
+            self.a, self.L, u=[self.u_h, self.p_h], bcs=[b.bc for b in self.bcs if isinstance(b, Strong)],
             petsc_options_prefix="ns_",
             petsc_options=self.petsc_options,
         )
@@ -118,7 +135,7 @@ class NavierStokesSolver(TimeDependence):
     def solve(self):
         self.problem.solve()
 
-        if self.case.pressure_up_to_constant:
+        if self.pressure_up_to_constant:
             subtract_mean(self.p_h, self._p_int, self._vol)
 
     def advance_history(self):

@@ -16,10 +16,13 @@ def create_box_mesh(lower, upper, n, cell_type, comm = MPI.COMM_WORLD):
     return mesh.create_box(comm, corners, cells, cell_type)
 
 
-def tag_exterior_facets(msh, marker):
+def tag_exterior_facets(msh, marker, subdomains=None):
+    # Every exterior facet gets marker, except where a locator in subdomains = {marker: locator(x)} is True
     tdim = msh.topology.dim
     fdim = tdim - 1
     msh.topology.create_connectivity(fdim, tdim)
     facets = mesh.exterior_facet_indices(msh.topology)
     values = np.full(facets.size, marker, dtype=np.int32)
+    for sub_marker, locator in (subdomains or {}).items():
+        values[np.isin(facets, mesh.locate_entities_boundary(msh, fdim, locator))] = sub_marker
     return mesh.meshtags(msh, fdim, facets, values)

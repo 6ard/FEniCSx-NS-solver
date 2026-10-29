@@ -23,7 +23,7 @@ class Solver(ABC):
 
     @property
     def pressure_is_mean_free(self):
-        return self.case.pressure_up_to_constant
+        return self.pressure_up_to_constant
 
 class SteadyState(Solver):
     pass

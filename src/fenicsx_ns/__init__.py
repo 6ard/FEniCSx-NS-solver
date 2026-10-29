@@ -3,7 +3,7 @@ import dolfinx
 if not dolfinx.__version__.startswith("0.11"):
     raise ImportError(f"This package requires dolfinx version 0.11 or higher, found version: {dolfinx.__version__}")
 
-from fenicsx_ns.boundary_conditions import DirichletVelocity, PressurePin
+from fenicsx_ns.boundary_conditions import DirichletVelocity, PressurePin, DoNothing, TrueDoNothing
 from fenicsx_ns.observers import ErrorNorm, Observer, VTXOutput, Progress
 from fenicsx_ns.utils import global_integral, constant
 from fenicsx_ns.cases.meshes import create_box_mesh, tag_exterior_facets
@@ -19,6 +19,8 @@ from fenicsx_ns.time_schemes import TimeScheme
 __all__ = [
     "DirichletVelocity",
     "PressurePin",
+    "DoNothing",
+    "TrueDoNothing",
     "Observer",
     "ErrorNorm",
     "Progress",
