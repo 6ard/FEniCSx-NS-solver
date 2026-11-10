@@ -66,3 +66,16 @@ class DFGCylinderCase(Case):
 
     def initial_condition(self, t):
         return lambda x: np.zeros((2, x.shape[1]))
+
+
+class OscillatingCylinderCase(DFGCylinderCase):
+    # The DFG channel and cylinder with the inflow U_max sin(2 pi t / period). In the first half of a period the fluid
+    # leaves through the open boundary (outlet); in the second half the flow is reversed and it comes back in through it.
+    # Inflow through an open boundary is unstable without backflow stabilization (StabilizationParameters.backflow).
+    def __init__(self, U_max=1.5, period=8.0, **kwargs):
+        super().__init__(variant="2D-3", **kwargs)
+        self.U_max, self.period = U_max, period
+        self.U_mean, self.reference = 2 * U_max / 3, None
+
+    def inflow_amplitude(self, t):
+        return self.U_max * np.sin(2 * np.pi * t / self.period)

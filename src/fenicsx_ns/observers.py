@@ -177,6 +177,37 @@ class VTXOutput(Observer) :
         self.w_Q.close()
         self.w_V.close()
 
+class Snapshots(Observer):
+    # Keeps the velocity and pressure of every `every`-th step, so one simulation can be viewed at different times.
+    # velocity(t) and pressure(t) return the stored solution closest to time t.
+    def __init__(self, every=10):
+        self.every = every
+
+    def on_start(self, solver):
+        self._u_h, self._p_h = solver.u_h, solver.p_h
+        self.t, self._u, self._p = [], [], []
+
+    def on_step(self, solver):
+        if (solver.step % self.every) == 0:
+            self.t.append(solver.t)
+            self._u.append(solver.u_h.x.array.copy())
+            self._p.append(solver.p_h.x.array.copy())
+
+    def _at(self, f, values, t):
+        i = int(np.argmin(np.abs(np.asarray(self.t) - t)))
+        snapshot = fem.Function(f.function_space, name=f.name)
+        snapshot.x.array[:] = values[i]
+        return snapshot, self.t[i]
+
+    def velocity(self, t):
+        return self._at(self._u_h, self._u, t)[0]
+
+    def pressure(self, t):
+        return self._at(self._p_h, self._p, t)[0]
+
+    def time(self, t):
+        return self._at(self._u_h, self._u, t)[1]
+
 class DragLift(Observer):
     # Drag and lift coefficients C = 2 F / (rho U_mean^2 D) of the force F the fluid exerts on the facets with this marker.
     # volume=True evaluates F as the residual of the discrete momentum equation tested with a function that is e_i on

@@ -87,6 +87,21 @@ def plot_comparison(numeric, exact, *, cmap="viridis"):
 
     return plotter
 
+def plot_snapshots(snapshots, times, field="velocity", *, cmap="viridis", **mesh_kwargs):
+    # One panel per time, each showing the stored snapshot closest to it. field is "velocity" or "pressure".
+    # Pass clim=(min, max) to give the panels the same colour scale.
+    plotter = pv.Plotter(shape=(len(times), 1), window_size=(1400, 280 * len(times)))
+    scalar_bar = dict(vertical=True, height=0.8, position_x=0.93, position_y=0.1, title_font_size=14, label_font_size=12)
+
+    for row, t in enumerate(times):
+        plotter.subplot(row, 0)
+        title = f"t = {snapshots.time(t):.3g}" # A title per panel gives every panel its own colour bar
+        plot_field(getattr(snapshots, field)(t), plotter=plotter, cmap=cmap,
+                   scalar_bar_args=dict(scalar_bar, title=title), **mesh_kwargs)
+        plotter.camera.tight(padding=0.16, adjust_render_window=False)
+
+    return plotter
+
 def plot_error_norms(error_norms, norms, *, cmap="viridis"):
     for norm in norms:
         fig, ax = plt.subplots()
