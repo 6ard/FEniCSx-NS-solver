@@ -21,8 +21,12 @@ class DFGCylinderCase(Case):
     length, height, centre, radius = 2.2, 0.41, (0.2, 0.2), 0.05
     pressure_points = ((0.15, 0.2), (0.25, 0.2)) # Front and back of the cylinder, dp = p(front) - p(back)
 
-    # Spectral reference values for 2D-1. 2D-2 and 2D-3 are only published as mesh/time-step convergence tables.
-    REFERENCE = {"2D-1": {"C_D": 5.57953523384, "C_L": 0.010618948146, "dp": 0.11752016697}}
+    # Published FeatFlow values. 2D-1: spectral reference. 2D-2 and 2D-3: finest level (6) of the Q2/P1disc
+    # Crank-Nicolson tables, k = 1/200 and k = 1/1600; 2D-2 over one shedding cycle, t_*_max is the time of the maximum.
+    REFERENCE = {"2D-1": {"C_D": 5.57953523384, "C_L": 0.010618948146, "dp": 0.11752016697},
+                 "2D-2": {"C_D_max": 3.2200, "C_D_min": 3.1569, "C_L_max": 0.9859, "C_L_min": -1.0206, "St": 0.30188},
+                 "2D-3": {"C_D_max": 2.9437637214, "t_C_D_max": 3.9365625, "C_L_max": 0.47748781595,
+                          "t_C_L_max": 5.6928125, "dp_end": -0.11154138872}}
 
     def __init__(self, variant="2D-1", fluid_params=FluidParameters(nu=1e-3, rho=1.0), h_cylinder=0.005, h_outer=0.04,
                  ramp_time=1.0, outlet=DoNothing):

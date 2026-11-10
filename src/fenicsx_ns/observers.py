@@ -178,17 +178,37 @@ class VTXOutput(Observer) :
         self.w_V.close()
 
 class DragLift(Observer):
-    # Drag and lift coefficients C = 2 F / (rho U_mean^2 D) of the force F the fluid exerts on the facets with this marker
-    def __init__(self, marker, U_mean, D):
-        self.marker, self.U_mean, self.D = marker, U_mean, D
+    # Drag and lift coefficients C = 2 F / (rho U_mean^2 D) of the force F the fluid exerts on the facets with this marker.
+    # volume=True evaluates F as the residual of the discrete momentum equation tested with a function that is e_i on
+    # the body and zero on every other dof; this is far more accurate than integrating the stress over the body (volume=False).
+    def __init__(self, marker, U_mean, D, volume=True):
+        self.marker, self.U_mean, self.D, self.volume = marker, U_mean, D, volume
 
-    def on_start(self, solver):
+    def _surface_force(self, solver, i):
         n = -solver.n # FacetNormal points out of the fluid; the force on the body needs the normal into the fluid
         sigma = 2 * solver.mu_c * ufl.sym(grad(solver.u_h)) - solver.p_h * ufl.Identity(solver.msh.geometry.dim)
-        traction = ufl.dot(sigma, n)
+        return ufl.dot(sigma, n)[i] * solver.ds(self.marker)
+
+    def _volume_force(self, solver, i):
+        u, p, dx = solver.u_h, solver.p_h, solver.dx
+        a0, a1, a2 = solver.a_c
+
+        phi = fem.Function(solver.V)
+        fdim = solver.msh.topology.dim - 1
+        phi.x.array[fem.locate_dofs_topological(solver.V.sub(i), fdim, solver.facet_tags.find(self.marker))] = 1.0
+        phi.x.scatter_forward()
+
+        # u_n and u_nm still hold the previous steps in on_step, so this is the time derivative the solver used
+        residual = (solver.rho_c / solver.dt_c * inner(a0 * u + a1 * solver.u_n + a2 * solver.u_nm, phi) * dx
+                    + 2 * solver.mu_c * inner(ufl.sym(grad(u)), grad(phi)) * dx
+                    + solver.grad_div_c * ufl.div(u) * ufl.div(phi) * dx
+                    - p * ufl.div(phi) * dx)
+        return -(residual + solver._convection(u, phi))
+
+    def on_start(self, solver):
+        force = self._volume_force if self.volume else self._surface_force
         scale = 2 / (solver.rho_c * self.U_mean**2 * self.D)
-        ds = solver.ds(self.marker)
-        self._forms = {"C_D": fem.form(scale * traction[0] * ds), "C_L": fem.form(scale * traction[1] * ds)}
+        self._forms = {"C_D": fem.form(scale * force(solver, 0)), "C_L": fem.form(scale * force(solver, 1))}
         self.history = {"t": [], "C_D": [], "C_L": []}
 
     def on_step(self, solver):
