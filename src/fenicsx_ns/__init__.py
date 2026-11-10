@@ -13,7 +13,7 @@ from fenicsx_ns.parameters import (
     StabilizationParameters,
     TimeParameters,
 )
-from fenicsx_ns.solvers import NavierStokesSolver
+from fenicsx_ns.solvers import NavierStokesSolver, StokesSolver
 from fenicsx_ns.time_schemes import TimeScheme
 
 __all__ = [
@@ -35,5 +35,6 @@ __all__ = [
     "TimeParameters",
     "StabilizationParameters",
     "TimeScheme",
-    "NavierStokesSolver"
+    "NavierStokesSolver",
+    "StokesSolver"
 ]

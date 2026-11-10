@@ -78,14 +78,11 @@ class NavierStokesSolver(TimeDependence):
         p, q = ufl.TrialFunction(self.Q), ufl.TestFunction(self.Q)
 
         a0, a1, a2 = self.a_c
-        e0, e1 = self.e_c
-
-        u_ns = e0 * self.u_n + e1 * self.u_nm
 
         a00 = (self.rho_c *a0 / self.dt_c * ufl.inner(u, v) * self.dx
-                + 0.5 * self.rho_c * (conv(u_ns, u, v) - conv(u_ns, v, u)) * self.dx
                 + 2 * self.mu_c * ufl.inner(eps(u), eps(v)) * self.dx
                 + self.grad_div_c * ufl.div(u) * ufl.div(v) * self.dx)
+        a00 += self._convection(u, v)
 
         a01 = - p * ufl.div(v) * self.dx
         a10 = - q * ufl.div(u) * self.dx
@@ -94,13 +91,7 @@ class NavierStokesSolver(TimeDependence):
         L1 = ufl.ZeroBaseForm((q,))
 
         for b in self.weak_bcs:
-            ds, u_ns_n = self.ds(b.marker), ufl.dot(u_ns, self.n)
             a00 += b.bilinear_form(u, v, self.n, self.ds, self.mu_c)
-            # The skew-symmetric convection leaves -rho/2 (u_ns.n) u on open boundaries; add it back
-            a00 += 0.5 * self.rho_c * u_ns_n * ufl.inner(u, v) * ds
-            if self.stabilization.backflow > 0:
-                # Backflow stabilization: removes the energy convection carries in where u_ns.n < 0
-                a00 -= 0.5 * self.backflow_c * self.rho_c * ufl.min_value(u_ns_n, 0) * ufl.inner(u, v) * ds
             L0 += b.linear_form(v, self.n, self.ds, self.x_c, self.t_c, self.mu_c)
 
         zero = constant(self.msh, 0.0)
@@ -108,7 +99,23 @@ class NavierStokesSolver(TimeDependence):
 
         self.a = fem.form([[a00, a01], [a10, a11]])
         self.L = fem.form([L0, L1])
-        
+
+    def _convection(self, u, v):
+        e0, e1 = self.e_c
+        u_ns = e0 * self.u_n + e1 * self.u_nm
+
+        c = 0.5 * self.rho_c * (conv(u_ns, u, v) - conv(u_ns, v, u)) * self.dx
+
+        for b in self.weak_bcs:
+            ds, u_ns_n = self.ds(b.marker), ufl.dot(u_ns, self.n)
+            # The skew-symmetric convection leaves -rho/2 (u_ns.n) u on open boundaries; add it back
+            c += 0.5 * self.rho_c * u_ns_n * ufl.inner(u, v) * ds
+            if self.stabilization.backflow > 0:
+                # Backflow stabilization: removes the energy convection carries in where u_ns.n < 0
+                c -= 0.5 * self.backflow_c * self.rho_c * ufl.min_value(u_ns_n, 0) * ufl.inner(u, v) * ds
+
+        return c
+
     def _normalize(self):
         self._vol = domain_volume(self.msh)
         self._p_int = fem.form(self.p_h * self.dx)
